@@ -1,0 +1,9 @@
+{
+  "entry": "./src/validate-parse-type.ts",
+  "outfile": "./dist/validate-parse-type.min.js",
+  "loader": { ".ts": "ts" },
+  "bundle": true,
+  "minify": true,
+  "format": "cjs",
+  "target": "esnext"
+}

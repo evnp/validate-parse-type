@@ -1,0 +1,57 @@
+{
+  "name": "validate-parse-type",
+  "version": "0.0.1",
+  "description": "This library does 3 things, in ergonomic, func-centric fashion.",
+  "main": "dist/validate-parse-type.min.js",
+  "types": "dist/validate-parse-type.d.ts",
+  "files": [
+    "dist/*"
+  ],
+  "scripts": {
+    "build": "npm run -s verify & npm run -s bundle & wait && npm run -s info",
+    "clean": "rm -r ./dist/* &>/dev/null || true ",
+    "bundle": "esbuild $( esbuild-config ) && gzip -kf9 dist/*.js",
+    "verify": "npm run type & npm run format",
+    "type": "tsc",
+    "test": "jest",
+    "lint": "eslint src/ test/",
+    "format": "eslint --fix src/ test/",
+    "repl": "node tools/validate-parse-type.repl.js",
+    "info": "cd dist && echo && for file in `ls`; do printf \"%-28s %10s\n\" \"dist/${file}#\" \"#$( ls -l $file | tr -s ' ' | cut -d' ' -f5 | awk '{print $1/1000}' )KB\" | tr ' ' '·' | tr '#' ' '; done && echo",
+    "update": "npx npm-check-updates -u && npm install",
+    "release": "git push private main && git push public main && npm publish"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/evnp/validate-parse-type.git"
+  },
+  "keywords": [
+    "typescript",
+    "javascript",
+    "vue"
+  ],
+  "author": "Evan Purcer",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/evnp/validate-parse-type/issues"
+  },
+  "homepage": "https://github.com/evnp/validate-parse-type#readme",
+  "dependencies": {
+    "vue": "3.2.45"
+  },
+  "devDependencies": {
+    "@types/jest": "27.0.3",
+    "@typescript-eslint/eslint-plugin": "5.45.0",
+    "@typescript-eslint/parser": "5.45.0",
+    "esbuild": "0.14.11",
+    "esbuild-config": "1.0.1",
+    "eslint": "8.29.0",
+    "eslint-config-prettier": "8.5.0",
+    "eslint-plugin-jest": "25.3.2",
+    "eslint-plugin-prettier": "4.2.1",
+    "jest": "27.4.5",
+    "prettier": "2.8.0",
+    "ts-jest": "27.1.2",
+    "typescript": "4.9.3"
+  }
+}
