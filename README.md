@@ -1,7 +1,21 @@
 Validate · Parse · Type
 -----------------------
+These verbs have a kinship; performing them together enhances clarity, safety, and correctness of code.
 
-A single function — `validate` — which provides simple-yet-ergonomic data correctness guarantees at the boundaries of your application. Know that the actual data you're working with matches the types you give it, without pulling in expensive schema-validation tooling to do so. Being function-centric makes `validate` lightweight, but also powerful and eminently flexible.
+Inspiration: [https://lexi-lambda.github.io/blog/2019/11/05/parse-don-t-validate](https://lexi-lambda.github.io/blog/2019/11/05/parse-don-t-validate "Parse, Don’t Validate by Alexis King")
+<br>
+(In spite of this excellent post's central message, I find `parse` written in code doesn't make _intent_ very clear. Instead, I'd remix from that message _Parse, AND Validate_ — and be clear both are happening when you do it!)
+
+```
+validate                = cultivate robust data logic leveraging terse-yet-readable validation
+validate         + type = craft runtime guarantees that outside data matches types you cast to
+validate + parse        = transform data, ensuring correctness before and after transformation
+validate + parse + type = alongside transformations, encode type information as it is observed
+```
+
+`validate-parse-type` exports a single function — invoked as `validate<Type>({ parse: () => ... })` — which provides simple, ergonomic data correctness guarantees at the boundaries of your application. `validate` helps you know that the actual data you're working with matches the types you give it, without pulling in expensive schema-validation tooling to do so.
+
+Function-centricity keeps `validate` lightweight [(<2kb gzipped)](https://github.com/evnp/validate-parse-type/blob/main/dist/validate-parse-type.min.js.gz "validate-parse-type.min.js.gz") but also powerful, and eminently flexible.
 
 Installation
 ------------
@@ -10,15 +24,21 @@ Installation
 npm install --save validate-parse-type
 ```
 Then, in your Javascript or Typescript files:
-```
+```typescript
 import validate from 'validate-parse-type';
-// or
+
+// ~ alternately ~
+
 import { validate } from 'validate-parse-type';
-// or
+
+// ~ alternately ~
+
 import { validate as nameOfYourChoice } from 'validate-parse-type';
 ```
-All atomic conditions are included under `validate` as a namespace (eg. `validate.unless(validate.isMissing)`) but you may import them as separate functions if you wish:
-```
+All "atomic composition" functions (eg. `validate.unless(validate.isMissing)`) are
+included under `validate` as a namespace, but you may import them as separate functions
+if you wish:
+```typescript
 import { validate, unless, isMissing, /* etc. */ } from 'validate-parse-type';
 ```
 
@@ -32,12 +52,12 @@ const data = response.data;
 validate(data, {
   "Data is missing": typeof data === undefined,
   "Data is not a string": typeof data !== "string",
-  "Data is empty": !data.length,
+  "Data is empty": !data?.length,
 });
 // Can raise
 // Error: Data is missing
 // Error: Data is not a string
-// Error: Data empty
+// Error: Data is empty
 ```
 
 2. Validation with type-casting:
@@ -46,12 +66,12 @@ const data = response.data;
 const stringData = validate<string>(data, {
   "Data is missing": typeof data === undefined,
   "Data is not a string": typeof data !== "string",
-  "Data is empty": !data.length,
+  "Data is empty": !data?.length,
 });
 // Can raise
 // Error: Data is missing
 // Error: Data is not a string
-// Error: Data empty
+// Error: Data is empty
 ```
 
 3. Validate and parse:
@@ -66,7 +86,7 @@ const stringValue = validate<string>(data, {
 // Can raise
 // Error: Value is missing
 // Error: Value is not a string
-// Error: Value empty
+// Error: Value is empty
 ```
 
 4. Validate data prior to parsing, and after parsing:
@@ -82,7 +102,7 @@ const stringValue = validate<string>(data, {
 // Error: Value is not a string
 ```
 
-5. Compose conditions via atomic validation functions:
+5. Use atomic composition to build conditions with consistent behavior and error messaging:
 ```typescript
 const data = response.data;
 const stringValue = validate<string>(data, {
@@ -98,7 +118,7 @@ const stringValue = validate<string>(data, {
 // Error: Value is not an object
 // Error: Value is empty
 
-// ~ alternately ~ //
+// ~ alternately ~
 
 const data = response.data;
 const stringValue = validate<string>(data, {
