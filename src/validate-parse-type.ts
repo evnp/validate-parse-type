@@ -5,7 +5,7 @@ type ValidateRules<T> = { [key: string]: ValidateRule<T> };
 type ValidateParser<T> = (() => unknown) | ((data: T) => unknown);
 type ValidateConfig<T> = { parse?: ValidateParser<T> };
 
-export function validate<T>(
+function validate<T>(
   data: unknown,
   config: ValidateConfig<T> | ValidateRules<T>
 ): Readonly<T> {
@@ -206,4 +206,61 @@ validate.notOneOf = function (
   }
   notOneOf.message = `is not one of ${serialize(values)}`;
   return notOneOf;
+};
+
+export default validate;
+
+const {
+  unless,
+  isMissing,
+  isEmpty,
+  nonString,
+  nonBoolean,
+  nonNumber,
+  nonInteger,
+  nonObject,
+  nonFunction,
+  nonArray,
+  nonSingleArray,
+  nonCoupleArray,
+  nonTripleArray,
+  nonSingleOrCoupleArray,
+  nonSingleOrCoupleOrTripleArray,
+  nonCoupleOrTripleArray,
+  nonStringInArray,
+  nonBooleanInArray,
+  nonNumberInArray,
+  nonIntegerInArray,
+  nonArrayInArray,
+  nonObjectInArray,
+  nonFunctionInArray,
+  notOneOf,
+} = validate;
+
+export {
+  validate,
+  unless,
+  isMissing,
+  isEmpty,
+  nonString,
+  nonBoolean,
+  nonNumber,
+  nonInteger,
+  nonObject,
+  nonFunction,
+  nonArray,
+  nonSingleArray,
+  nonCoupleArray,
+  nonTripleArray,
+  nonSingleOrCoupleArray,
+  nonSingleOrCoupleOrTripleArray,
+  nonCoupleOrTripleArray,
+  nonStringInArray,
+  nonBooleanInArray,
+  nonNumberInArray,
+  nonIntegerInArray,
+  nonArrayInArray,
+  nonObjectInArray,
+  nonFunctionInArray,
+  notOneOf,
 };

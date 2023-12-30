@@ -10,8 +10,8 @@ type ValidateParser<T> = (() => unknown) | ((data: T) => unknown);
 type ValidateConfig<T> = {
     parse?: ValidateParser<T>;
 };
-export declare function validate<T>(data: unknown, config: ValidateConfig<T> | ValidateRules<T>): Readonly<T>;
-export declare namespace validate {
+declare function validate<T>(data: unknown, config: ValidateConfig<T> | ValidateRules<T>): Readonly<T>;
+declare namespace validate {
     var unless: (...rules: ValidateAtom[] | [string, ...ValidateAtom[]]) => Record<string, ValidateAtom>;
     var isMissing: ValidateAtom;
     var isEmpty: ValidateAtom;
@@ -37,4 +37,6 @@ export declare namespace validate {
     var nonFunctionInArray: ValidateAtom;
     var notOneOf: (values: unknown[] | Record<string, unknown>) => ValidateAtom;
 }
-export {};
+export default validate;
+declare const unless: (...rules: ValidateAtom[] | [string, ...ValidateAtom[]]) => Record<string, ValidateAtom>, isMissing: ValidateAtom, isEmpty: ValidateAtom, nonString: ValidateAtom, nonBoolean: ValidateAtom, nonNumber: ValidateAtom, nonInteger: ValidateAtom, nonObject: ValidateAtom, nonFunction: ValidateAtom, nonArray: ValidateAtom, nonSingleArray: ValidateAtom, nonCoupleArray: ValidateAtom, nonTripleArray: ValidateAtom, nonSingleOrCoupleArray: ValidateAtom, nonSingleOrCoupleOrTripleArray: ValidateAtom, nonCoupleOrTripleArray: ValidateAtom, nonStringInArray: ValidateAtom, nonBooleanInArray: ValidateAtom, nonNumberInArray: ValidateAtom, nonIntegerInArray: ValidateAtom, nonArrayInArray: ValidateAtom, nonObjectInArray: ValidateAtom, nonFunctionInArray: ValidateAtom, notOneOf: (values: unknown[] | Record<string, unknown>) => ValidateAtom;
+export { validate, unless, isMissing, isEmpty, nonString, nonBoolean, nonNumber, nonInteger, nonObject, nonFunction, nonArray, nonSingleArray, nonCoupleArray, nonTripleArray, nonSingleOrCoupleArray, nonSingleOrCoupleOrTripleArray, nonCoupleOrTripleArray, nonStringInArray, nonBooleanInArray, nonNumberInArray, nonIntegerInArray, nonArrayInArray, nonObjectInArray, nonFunctionInArray, notOneOf, };
