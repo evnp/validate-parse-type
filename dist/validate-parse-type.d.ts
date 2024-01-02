@@ -10,7 +10,17 @@ type ValidateParser<T> = (() => unknown) | ((data: T) => unknown);
 type ValidateConfig<T> = {
     parse?: ValidateParser<T>;
 };
+type AsyncValidateFunc<T> = (parsed: T) => Promise<boolean>;
+type AsyncValidateRule<T> = ValidateRule<T> | AsyncValidateFunc<T>;
+type AsyncValidateRules<T> = {
+    [key: string]: AsyncValidateRule<T>;
+};
+type AsyncValidateParser<T> = ValidateParser<T> | (() => Promise<unknown>) | ((data: T) => Promise<unknown>);
+type AsyncValidateConfig<T> = {
+    parse?: AsyncValidateParser<T>;
+};
 declare function validate<T>(data: unknown, config: ValidateConfig<T> | ValidateRules<T>): Readonly<T>;
+declare function validate<T>(data: unknown, config: AsyncValidateConfig<T> | AsyncValidateRules<T>): Promise<Readonly<T>>;
 declare namespace validate {
     var unless: (...rules: ValidateAtom[] | [string, ...ValidateAtom[]]) => Record<string, ValidateAtom>;
     var isMissing: ValidateAtom;

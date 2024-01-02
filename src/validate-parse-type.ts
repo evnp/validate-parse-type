@@ -1,14 +1,32 @@
 type ValidateAtom = ((value: unknown) => boolean) & { message: string };
+
 type ValidateFunc<T> = (parsed: T) => boolean;
 type ValidateRule<T> = boolean | ValidateAtom | ValidateFunc<T>;
 type ValidateRules<T> = { [key: string]: ValidateRule<T> };
 type ValidateParser<T> = (() => unknown) | ((data: T) => unknown);
 type ValidateConfig<T> = { parse?: ValidateParser<T> };
 
+type AsyncValidateFunc<T> = (parsed: T) => Promise<boolean>;
+type AsyncValidateRule<T> = ValidateRule<T> | AsyncValidateFunc<T>;
+type AsyncValidateRules<T> = { [key: string]: AsyncValidateRule<T> };
+type AsyncValidateParser<T> =
+  | ValidateParser<T>
+  | (() => Promise<unknown>)
+  | ((data: T) => Promise<unknown>);
+type AsyncValidateConfig<T> = { parse?: AsyncValidateParser<T> };
+
 function validate<T>(
   data: unknown,
   config: ValidateConfig<T> | ValidateRules<T>
-): Readonly<T> {
+): Readonly<T>;
+function validate<T>(
+  data: unknown,
+  config: AsyncValidateConfig<T> | AsyncValidateRules<T>
+): Promise<Readonly<T>>;
+function validate<T>(
+  data: unknown,
+  config: AsyncValidateConfig<T> | AsyncValidateRules<T>
+): Readonly<T> | Promise<Readonly<T>> {
   let parseResult = null;
   let invalid = null;
   let infix = ": ";
@@ -16,20 +34,49 @@ function validate<T>(
   let errorName = "";
   let errorMessage = "";
 
-  for (const [message, rule] of Object.entries(config)) {
+  const rules = Object.entries(config).reverse();
+  let entry, message, rule;
+
+  while ((entry = rules.pop())) {
+    [message, rule] = entry;
     try {
       if (message === "parse") {
         const parser = rule;
         parseResult = typeof parser === "function" ? parser(data) : parser;
+        if (isPromise(parseResult)) {
+          return parseResult.then((result: T) =>
+            validate(result, Object.fromEntries(rules))
+          );
+        }
       } else {
         const param = parseResult ?? data;
-        if (
-          typeof rule === "function"
-            ? rule(param)
-            : Array.isArray(rule) // support arrays of rules
-            ? !rule.every((r) => (typeof r === "function" ? r(param) : r))
-            : rule
-        ) {
+        let ruleResult = false;
+        if (typeof rule === "function") {
+          ruleResult = rule(param);
+          if (isPromise(ruleResult)) {
+            return parseResult.then((result: T) =>
+              validate(result, Object.fromEntries(rules))
+            );
+          }
+        } else if (Array.isArray(rule)) {
+          // support arrays of rules:
+          let subRuleResult = false;
+          for (const subRule of rule) {
+            subRuleResult = subRule(param);
+            if (isPromise(subRuleResult)) {
+              return parseResult.then((result: T) =>
+                validate(result, Object.fromEntries(rules))
+              );
+            }
+            if (subRuleResult) {
+              ruleResult = subRuleResult;
+              break;
+            }
+          }
+        } else {
+          ruleResult = rule;
+        }
+        if (ruleResult) {
           invalid = message;
           break; // break out of loop as soon as first invalid rule is reached
         }
@@ -49,6 +96,13 @@ function validate<T>(
   }
 
   return Object.freeze(parseResult as T);
+}
+
+function isPromise(data: unknown) {
+  return (
+    (typeof data === "object" || typeof data === "function") &&
+    typeof (data as Promise<unknown>)?.then === "function"
+  );
 }
 
 function serialize(data: unknown) {
