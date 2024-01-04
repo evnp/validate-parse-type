@@ -32,8 +32,6 @@ function validate<T>(
   let invalid = null;
   let infix = ": ";
   let suffix = "";
-  let errorName = "";
-  let errorMessage = "";
 
   const rules = Object.entries(config).reverse();
   let entry, message, rule;
@@ -98,10 +96,8 @@ function validate<T>(
       }
     } catch (error) {
       invalid = message === "parse" ? "Failed to parse result" : message;
-      errorName = (error as Error)?.name ?? "Error";
-      errorMessage = (error as Error)?.message ?? error?.toString() ?? "";
-      infix = ` (${errorName}):`;
-      suffix = `\n${errorMessage}`;
+      infix = " (" + ((error as Error)?.name ?? "Error") + "):";
+      suffix = "\n" + ((error as Error)?.message ?? error?.toString()) ?? "";
       break; // break out of loop as soon as unknown error occurs
     }
   }
