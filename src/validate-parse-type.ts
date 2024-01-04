@@ -27,7 +27,8 @@ function validate<T>(
   data: unknown,
   config: AsyncValidateConfig<T> | AsyncValidateRules<T>
 ): Readonly<T> | Promise<Readonly<T>> {
-  let parseResult = null;
+  let parse = null;
+  let result = null;
   let invalid = null;
   let infix = ": ";
   let suffix = "";
@@ -41,20 +42,29 @@ function validate<T>(
     [message, rule] = entry;
     try {
       if (message === "parse") {
-        const parser = rule;
-        parseResult = typeof parser === "function" ? parser(data) : parser;
-        if (isPromise(parseResult)) {
-          return parseResult.then((result: T) =>
+        parse = rule;
+        result = typeof parse === "function" ? parse(data) : parse;
+        if (
+          // Check if result is promise:
+          (typeof result === "object" || typeof result === "function") &&
+          typeof (result as Promise<unknown>).then === "function"
+        ) {
+          return result.then((result: T) =>
             validate(result, Object.fromEntries(rules))
           );
         }
       } else {
-        const param = parseResult ?? data;
+        const param = parse ? result : data;
         let ruleResult = false;
         if (typeof rule === "function") {
           ruleResult = rule(param);
-          if (isPromise(ruleResult)) {
-            return parseResult.then((result: T) =>
+          if (
+            // Check if result is promise:
+            (typeof ruleResult === "object" ||
+              typeof ruleResult === "function") &&
+            typeof (ruleResult as Promise<boolean>).then === "function"
+          ) {
+            return (ruleResult as Promise<boolean>).then((result: boolean) =>
               validate(result, Object.fromEntries(rules))
             );
           }
@@ -63,9 +73,14 @@ function validate<T>(
           let subRuleResult = false;
           for (const subRule of rule) {
             subRuleResult = subRule(param);
-            if (isPromise(subRuleResult)) {
-              return parseResult.then((result: T) =>
-                validate(result, Object.fromEntries(rules))
+            if (
+              // Check if result is promise:
+              (typeof subRuleResult === "object" ||
+                typeof subRuleResult === "function") &&
+              typeof (subRuleResult as Promise<boolean>).then === "function"
+            ) {
+              return (subRuleResult as Promise<boolean>).then(
+                (result: boolean) => validate(result, Object.fromEntries(rules))
               );
             }
             if (subRuleResult) {
@@ -95,14 +110,7 @@ function validate<T>(
     throw new Error(invalid + infix + serialize(data) + suffix);
   }
 
-  return Object.freeze(parseResult as T);
-}
-
-function isPromise(data: unknown) {
-  return (
-    (typeof data === "object" || typeof data === "function") &&
-    typeof (data as Promise<unknown>)?.then === "function"
-  );
+  return Object.freeze((parse ? result : data) as T);
 }
 
 function serialize(data: unknown) {
