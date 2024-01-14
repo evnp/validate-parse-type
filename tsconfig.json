@@ -5,7 +5,7 @@
     "esModuleInterop": true,
     "baseUrl": ".",
     "types": ["jest"],
-    "lib": ["esnext"],
+    "lib": ["esnext", "dom"],
     "module": "esnext",
     "moduleResolution": "node",
     "declaration": true,

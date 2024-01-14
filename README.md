@@ -46,7 +46,7 @@ Examples
 --------
 A utility in 5 use cases.
 
-1. Bare validation:
+1. Basic validation:
 ```typescript
 const data = response.data;
 validate(data, {
