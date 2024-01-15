@@ -70,19 +70,23 @@ function validate<T>(
           // support arrays of rules:
           let subRuleResult = false;
           for (const subRule of rule) {
-            subRuleResult = subRule(param);
-            if (
-              // Check if result is promise:
-              (typeof subRuleResult === "object" || typeof subRuleResult === "function") &&
-              typeof (subRuleResult as Promise<boolean>).then === "function"
-            ) {
-              return (subRuleResult as Promise<boolean>).then((result: boolean) => {
-                if (result) {
-                  throw new Error(message + infix + serialize(data) + suffix);
-                } else {
-                  return validate(param, Object.fromEntries(rules));
-                }
-              });
+            if (typeof subRule !== "function") {
+              subRuleResult = subRule;
+            } else {
+              subRuleResult = subRule(param);
+              if (
+                // Check if result is promise:
+                (typeof subRuleResult === "object" || typeof subRuleResult === "function") &&
+                typeof (subRuleResult as Promise<boolean>).then === "function"
+              ) {
+                return (subRuleResult as Promise<boolean>).then((result: boolean) => {
+                  if (result) {
+                    throw new Error(message + infix + serialize(data) + suffix);
+                  } else {
+                    return validate(param, Object.fromEntries(rules));
+                  }
+                });
+              }
             }
             if (subRuleResult) {
               ruleResult = subRuleResult;
