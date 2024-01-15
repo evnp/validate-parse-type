@@ -9,11 +9,17 @@ type ValidateConfig<T> = { parse?: ValidateParser<T> };
 type AsyncValidateFunc<T> = (parsed: T) => Promise<boolean>;
 type AsyncValidateRule<T> = ValidateRule<T> | AsyncValidateFunc<T>;
 type AsyncValidateRules<T> = { [key: string]: AsyncValidateRule<T> };
-type AsyncValidateParser<T> = ValidateParser<T> | (() => Promise<unknown>) | ((data: T) => Promise<unknown>);
+type AsyncValidateParser<T> =
+  | ValidateParser<T>
+  | (() => Promise<unknown>)
+  | ((data: T) => Promise<unknown>);
 type AsyncValidateConfig<T> = { parse?: AsyncValidateParser<T> };
 
 function validate<T>(data: unknown, config: ValidateConfig<T> | ValidateRules<T>): Readonly<T>;
-function validate<T>(data: unknown, config: AsyncValidateConfig<T> | AsyncValidateRules<T>): Promise<Readonly<T>>;
+function validate<T>(
+  data: unknown,
+  config: AsyncValidateConfig<T> | AsyncValidateRules<T>
+): Promise<Readonly<T>>;
 function validate<T>(
   data: unknown,
   config: AsyncValidateConfig<T> | AsyncValidateRules<T>
@@ -120,7 +126,9 @@ function truncateStringReplacer(key: string, value: unknown) {
   }
 }
 
-validate.unless = function (...rules: ValidateAtom[] | [string, ...ValidateAtom[]]): Record<string, ValidateAtom> {
+validate.unless = function (
+  ...rules: ValidateAtom[] | [string, ...ValidateAtom[]]
+): Record<string, ValidateAtom> {
   let prefix = "";
   if (typeof rules[0] === "string") {
     prefix = `${rules[0]} `;
@@ -129,7 +137,10 @@ validate.unless = function (...rules: ValidateAtom[] | [string, ...ValidateAtom[
     rules = rules as ValidateAtom[];
   }
   return Object.fromEntries(
-    rules.map((rule) => [prefix + (prefix.length ? rule.message.toLowerCase() : rule.message), rule])
+    rules.map((rule) => [
+      prefix + (prefix.length ? rule.message.toLowerCase() : rule.message),
+      rule,
+    ])
   );
 };
 
