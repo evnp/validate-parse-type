@@ -86,81 +86,93 @@ describe("validate-parse-type", () => {
     });
 
     test("validate -> parse", () => {
-      fc.assert(
-        fc.property(fc.string(), (s) => {
-          const parse = (x: string) => x.toUpperCase();
-          strValidators.forEach((v) =>
-            expect(validate(s, { ...v(s), parse })).toBe(s.toUpperCase())
-          );
-        })
-      );
-      fc.assert(
-        fc.property(
-          fc.string(),
-          fc.array(fc.oneof(...strValidators.map((v) => fc.constant(v)))),
-          (s, a) => {
-            const parse = (x: string) => x.toUpperCase();
-            const rules = Object.assign({}, ...a.map((v) => v(s)));
-            expect(validate(s, { ...rules, parse })).toBe(s.toUpperCase());
-          }
-        )
-      );
-      fc.assert(
-        fc.property(fc.integer(), (n) => {
-          const parse = (x: number) => x * x;
-          intValidators.forEach((v) => expect(validate(n, { ...v(n), parse })).toBe(n * n));
-        })
-      );
-      fc.assert(
-        fc.property(
-          fc.integer(),
-          fc.array(fc.oneof(...intValidators.map((v) => fc.constant(v)))),
-          (n, a) => {
-            const parse = (x: number) => x * x;
-            const rules = Object.assign({}, ...a.map((v) => v(n)));
-            expect(validate(n, { ...rules, parse })).toBe(n * n);
-          }
-        )
-      );
+      for (const { arbitrary, validators, parse } of [
+        { arbitrary: fc.string, validators: strValidators, parse: (x: string) => x.toUpperCase() },
+        { arbitrary: fc.integer, validators: intValidators, parse: (x: number) => x * x },
+      ]) {
+        fc.assert(
+          fc.property(arbitrary(), (d) => {
+            for (const rule of validators) {
+              expect(validate(d, { ...rule(d as never), parse: parse as any })).toBe(
+                parse(d as never)
+              );
+            }
+          })
+        );
+        fc.assert(
+          fc.property(
+            arbitrary(),
+            fc.array(fc.oneof(...validators.map((v: any) => fc.constant(v)))),
+            fc.nat(5),
+            (d, a, i) => {
+              // This tests combinations of "singular rules" and "multiple rules"
+              // "Singluar rules" are validations where a key maps to a single function or value.
+              // "Multiple rules" are validations where a key maps to an array of functions or values.
+              const singularRules = Object.assign({}, ...a.map((v) => v(d as never)));
+              const multipleRules = Object.assign(
+                {},
+                ...a.map((v) => {
+                  const [key, rule] = Object.entries(v(d as never))[0];
+                  return { [key]: [rule, ...Object.values(singularRules).slice(i)] };
+                })
+              );
+              expect(validate(d, { ...singularRules, parse })).toBe(parse(d as never));
+              expect(validate(d, { ...multipleRules, parse })).toBe(parse(d as never));
+              expect(
+                validate(d, { ...Object.assign({}, singularRules, multipleRules), parse })
+              ).toBe(parse(d as never));
+              expect(
+                validate(d, { ...Object.assign({}, multipleRules, singularRules), parse })
+              ).toBe(parse(d as never));
+            }
+          )
+        );
+      }
     });
 
     test("parse -> validate", () => {
-      fc.assert(
-        fc.property(fc.string(), (s) => {
-          const parse = (x: string) => x.toUpperCase();
-          strValidators.forEach((v) =>
-            expect(validate(s, { parse, ...v(s) })).toBe(s.toUpperCase())
-          );
-        })
-      );
-      fc.assert(
-        fc.property(
-          fc.string(),
-          fc.array(fc.oneof(...strValidators.map((v) => fc.constant(v)))),
-          (s, a) => {
-            const parse = (x: string) => x.toUpperCase();
-            const rules = Object.assign({}, ...a.map((v) => v(s)));
-            expect(validate(s, { parse, ...rules })).toBe(s.toUpperCase());
-          }
-        )
-      );
-      fc.assert(
-        fc.property(fc.integer(), (n) => {
-          const parse = (x: number) => x * x;
-          intValidators.forEach((v) => expect(validate(n, { parse, ...v(n) })).toBe(n * n));
-        })
-      );
-      fc.assert(
-        fc.property(
-          fc.integer(),
-          fc.array(fc.oneof(...intValidators.map((v) => fc.constant(v)))),
-          (n, a) => {
-            const parse = (x: number) => x * x;
-            const rules = Object.assign({}, ...a.map((v) => v(n)));
-            expect(validate(n, { parse, ...rules })).toBe(n * n);
-          }
-        )
-      );
+      for (const { arbitrary, validators, parse } of [
+        { arbitrary: fc.string, validators: strValidators, parse: (x: string) => x.toUpperCase() },
+        { arbitrary: fc.integer, validators: intValidators, parse: (x: number) => x * x },
+      ]) {
+        fc.assert(
+          fc.property(arbitrary(), (d) => {
+            for (const rule of validators) {
+              expect(validate(d, { parse: parse as any, ...rule(d as never) })).toBe(
+                parse(d as never)
+              );
+            }
+          })
+        );
+        fc.assert(
+          fc.property(
+            arbitrary(),
+            fc.array(fc.oneof(...validators.map((v: any) => fc.constant(v)))),
+            fc.nat(5),
+            (d, a, i) => {
+              // This tests combinations of "singular rules" and "multiple rules"
+              // "Singluar rules" are validations where a key maps to a single function or value.
+              // "Multiple rules" are validations where a key maps to an array of functions or values.
+              const singularRules = Object.assign({}, ...a.map((v) => v(d as never)));
+              const multipleRules = Object.assign(
+                {},
+                ...a.map((v) => {
+                  const [key, rule] = Object.entries(v(d as never))[0];
+                  return { [key]: [rule, ...Object.values(singularRules).slice(i)] };
+                })
+              );
+              expect(validate(d, { parse, ...singularRules })).toBe(parse(d as never));
+              expect(validate(d, { parse, ...multipleRules })).toBe(parse(d as never));
+              expect(
+                validate(d, { parse, ...Object.assign({}, singularRules, multipleRules) })
+              ).toBe(parse(d as never));
+              expect(
+                validate(d, { parse, ...Object.assign({}, multipleRules, singularRules) })
+              ).toBe(parse(d as never));
+            }
+          )
+        );
+      }
     });
 
     test("validate -> parse -> validate", () => {
