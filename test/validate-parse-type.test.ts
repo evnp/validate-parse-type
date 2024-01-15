@@ -9,24 +9,20 @@ import fc from "fast-check";
 
 import { validate } from "../src/validate-parse-type";
 
-const isStr = (value: unknown) => typeof value === "string";
-const isNum = (value: unknown) => typeof value === "number";
-const isInt = (value: unknown) => Number.isInteger(value);
-
 const validators = {
   string: [
-    (s: string) => ({ "not str": !isStr(s) }),
-    (s: string) => ({ "not str": () => !isStr(s) }),
-    (s: string) => ({ "no len": !isInt(s.length) }),
-    (s: string) => ({ "no len": () => !isInt(s.length) }),
+    (s: string) => ({ "not str": typeof s !== "string" }),
+    (s: string) => ({ "not str": () => typeof s !== "string" }),
+    (s: string) => ({ "no len": !Number.isInteger(s.length) }),
+    (s: string) => ({ "no len": () => !Number.isInteger(s.length) }),
     () => ({ "not str": validate.nonString }),
     () => validate.unless(validate.nonString),
   ],
   integer: [
-    (n: number) => ({ "not num": !isNum(n) }),
-    (n: number) => ({ "not num": () => !isNum(n) }),
-    (n: number) => ({ "not int": !isInt(n) }),
-    (n: number) => ({ "not int": () => !isNum(n) }),
+    (n: number) => ({ "not num": typeof n !== "number" }),
+    (n: number) => ({ "not num": () => typeof n !== "number" }),
+    (n: number) => ({ "not int": !Number.isInteger(n) }),
+    (n: number) => ({ "not int": () => !Number.isInteger(n) }),
     () => ({ "not num": validate.nonNumber }),
     () => validate.unless(validate.nonNumber),
   ],
@@ -208,9 +204,13 @@ describe("validate-parse-type", () => {
     test("validate", async () => {
       await fc.assert(
         fc.asyncProperty(fc.string(), async (s) => {
-          expect(await validate(s, { "not str": async () => await wait(() => !isStr(s)) })).toBe(s);
           expect(
-            await validate(s, { "no len": async () => await wait(() => !isInt(s.length)) })
+            await validate(s, { "not str": async () => await wait(() => typeof s !== "string") })
+          ).toBe(s);
+          expect(
+            await validate(s, {
+              "no len": async () => await wait(() => !Number.isInteger(s.length)),
+            })
           ).toBe(s);
         })
       );
@@ -219,9 +219,11 @@ describe("validate-parse-type", () => {
           fc.string(),
           fc.array(
             fc.oneof(
-              fc.constant((s: string) => ({ "not str": async () => await wait(() => !isStr(s)) })),
               fc.constant((s: string) => ({
-                "no len": async () => await wait(() => !isInt(s.length)),
+                "not str": async () => await wait(() => typeof s !== "string"),
+              })),
+              fc.constant((s: string) => ({
+                "no len": async () => await wait(() => !Number.isInteger(s.length)),
               })),
               // Combine with various non-async validators:
               ...validators.string.map((v) => fc.constant(v))
@@ -235,8 +237,12 @@ describe("validate-parse-type", () => {
       );
       await fc.assert(
         fc.asyncProperty(fc.integer(), async (n) => {
-          expect(await validate(n, { "not num": async () => await wait(() => !isNum(n)) })).toBe(n);
-          expect(await validate(n, { "not int": async () => await wait(() => !isInt(n)) })).toBe(n);
+          expect(
+            await validate(n, { "not num": async () => await wait(() => typeof n !== "number") })
+          ).toBe(n);
+          expect(
+            await validate(n, { "not int": async () => await wait(() => !Number.isInteger(n)) })
+          ).toBe(n);
         })
       );
       await fc.assert(
@@ -244,8 +250,12 @@ describe("validate-parse-type", () => {
           fc.integer(),
           fc.array(
             fc.oneof(
-              fc.constant((n: number) => ({ "not num": async () => await wait(() => !isNum(n)) })),
-              fc.constant((n: number) => ({ "not int": async () => await wait(() => !isInt(n)) })),
+              fc.constant((n: number) => ({
+                "not num": async () => await wait(() => typeof n !== "number"),
+              })),
+              fc.constant((n: number) => ({
+                "not int": async () => await wait(() => !Number.isInteger(n)),
+              })),
               // Combine with various non-async validators:
               ...validators.integer.map((v) => fc.constant(v))
             )
@@ -263,25 +273,31 @@ describe("validate-parse-type", () => {
         fc.asyncProperty(fc.string(), async (s) => {
           const expectParse = (value: string) => expect(value).toBe(s.toUpperCase());
 
-          const sParse = (value: string) => value.toUpperCase();
+          const syncParse = (value: string) => value.toUpperCase();
           expectParse(
-            await validate(s, { "not str": async () => await wait(() => !isStr(s)), parse: sParse })
+            await validate(s, {
+              "not str": async () => await wait(() => typeof s !== "string"),
+              parse: syncParse,
+            })
           );
           expectParse(
             await validate(s, {
-              "no len": async () => await wait(() => !isInt(s.length)),
-              parse: sParse,
+              "no len": async () => await wait(() => !Number.isInteger(s.length)),
+              parse: syncParse,
             })
           );
 
-          const aParse = async (value: string) => await wait(() => value.toUpperCase());
+          const asyncParse = async (value: string) => await wait(() => value.toUpperCase());
           expectParse(
-            await validate(s, { "not str": async () => await wait(() => !isStr(s)), parse: aParse })
+            await validate(s, {
+              "not str": async () => await wait(() => typeof s !== "string"),
+              parse: asyncParse,
+            })
           );
           expectParse(
             await validate(s, {
-              "no len": async () => await wait(() => !isInt(s.length)),
-              parse: aParse,
+              "no len": async () => await wait(() => !Number.isInteger(s.length)),
+              parse: asyncParse,
             })
           );
         })
@@ -291,9 +307,11 @@ describe("validate-parse-type", () => {
           fc.string(),
           fc.array(
             fc.oneof(
-              fc.constant((s: string) => ({ "not str": async () => await wait(() => !isStr(s)) })),
               fc.constant((s: string) => ({
-                "no len": async () => await wait(() => !isInt(s.length)),
+                "not str": async () => await wait(() => typeof s !== "string"),
+              })),
+              fc.constant((s: string) => ({
+                "no len": async () => await wait(() => !Number.isInteger(s.length)),
               })),
               // Combine with various non-async validators:
               ...validators.string.map((v) => fc.constant(v))
@@ -302,11 +320,11 @@ describe("validate-parse-type", () => {
           async (s, a) => {
             const validators = Object.assign({}, ...a.map((v) => v(s)));
 
-            const sParse = (value: string) => value.toUpperCase();
-            expect(await validate(s, { ...validators, parse: sParse })).toBe(s.toUpperCase());
+            const syncParse = (value: string) => value.toUpperCase();
+            expect(await validate(s, { ...validators, parse: syncParse })).toBe(s.toUpperCase());
 
-            const aParse = async (value: string) => await wait(() => value.toUpperCase());
-            expect(await validate(s, { ...validators, parse: aParse })).toBe(s.toUpperCase());
+            const asyncParse = async (value: string) => await wait(() => value.toUpperCase());
+            expect(await validate(s, { ...validators, parse: asyncParse })).toBe(s.toUpperCase());
           }
         )
       );
@@ -314,20 +332,32 @@ describe("validate-parse-type", () => {
         fc.asyncProperty(fc.integer(), async (n) => {
           const expectParse = (value: number) => expect(value).toBe(n * n);
 
-          const sParse = (value: number) => value * value;
+          const syncParse = (value: number) => value * value;
           expectParse(
-            await validate(n, { "not num": async () => await wait(() => !isNum(n)), parse: sParse })
+            await validate(n, {
+              "not num": async () => await wait(() => typeof n !== "number"),
+              parse: syncParse,
+            })
           );
           expectParse(
-            await validate(n, { "not int": async () => await wait(() => !isInt(n)), parse: sParse })
+            await validate(n, {
+              "not int": async () => await wait(() => !Number.isInteger(n)),
+              parse: syncParse,
+            })
           );
 
-          const aParse = async (value: number) => await wait(() => value * value);
+          const asyncParse = async (value: number) => await wait(() => value * value);
           expectParse(
-            await validate(n, { "not num": async () => await wait(() => !isNum(n)), parse: aParse })
+            await validate(n, {
+              "not num": async () => await wait(() => typeof n !== "number"),
+              parse: asyncParse,
+            })
           );
           expectParse(
-            await validate(n, { "not int": async () => await wait(() => !isInt(n)), parse: aParse })
+            await validate(n, {
+              "not int": async () => await wait(() => !Number.isInteger(n)),
+              parse: asyncParse,
+            })
           );
         })
       );
@@ -336,8 +366,12 @@ describe("validate-parse-type", () => {
           fc.integer(),
           fc.array(
             fc.oneof(
-              fc.constant((n: number) => ({ "not num": async () => await wait(() => !isNum(n)) })),
-              fc.constant((n: number) => ({ "not int": async () => await wait(() => !isInt(n)) })),
+              fc.constant((n: number) => ({
+                "not num": async () => await wait(() => typeof n !== "number"),
+              })),
+              fc.constant((n: number) => ({
+                "not int": async () => await wait(() => !Number.isInteger(n)),
+              })),
               // Combine with various non-async validators:
               ...validators.integer.map((v) => fc.constant(v))
             )
@@ -345,11 +379,11 @@ describe("validate-parse-type", () => {
           async (n, a) => {
             const validators = Object.assign({}, ...a.map((v) => v(n)));
 
-            const sParse = (value: number) => value * value;
-            expect(await validate(n, { ...validators, parse: sParse })).toBe(n * n);
+            const syncParse = (value: number) => value * value;
+            expect(await validate(n, { ...validators, parse: syncParse })).toBe(n * n);
 
-            const aParse = async (value: number) => await wait(() => value * value);
-            expect(await validate(n, { ...validators, parse: aParse })).toBe(n * n);
+            const asyncParse = async (value: number) => await wait(() => value * value);
+            expect(await validate(n, { ...validators, parse: asyncParse })).toBe(n * n);
           }
         )
       );
@@ -360,25 +394,31 @@ describe("validate-parse-type", () => {
         fc.asyncProperty(fc.string(), async (s) => {
           const expectParse = (value: string) => expect(value).toBe(s.toUpperCase());
 
-          const sParse = (value: string) => value.toUpperCase();
+          const syncParse = (value: string) => value.toUpperCase();
           expectParse(
-            await validate(s, { parse: sParse, "not str": async () => await wait(() => !isStr(s)) })
+            await validate(s, {
+              parse: syncParse,
+              "not str": async () => await wait(() => typeof s !== "string"),
+            })
           );
           expectParse(
             await validate(s, {
-              parse: sParse,
-              "no len": async () => await wait(() => !isInt(s.length)),
+              parse: syncParse,
+              "no len": async () => await wait(() => !Number.isInteger(s.length)),
             })
           );
 
-          const aParse = async (value: string) => await wait(() => value.toUpperCase());
+          const asyncParse = async (value: string) => await wait(() => value.toUpperCase());
           expectParse(
-            await validate(s, { parse: aParse, "not str": async () => await wait(() => !isStr(s)) })
+            await validate(s, {
+              parse: asyncParse,
+              "not str": async () => await wait(() => typeof s !== "string"),
+            })
           );
           expectParse(
             await validate(s, {
-              parse: aParse,
-              "no len": async () => await wait(() => !isInt(s.length)),
+              parse: asyncParse,
+              "no len": async () => await wait(() => !Number.isInteger(s.length)),
             })
           );
         })
@@ -388,9 +428,11 @@ describe("validate-parse-type", () => {
           fc.string(),
           fc.array(
             fc.oneof(
-              fc.constant((s: string) => ({ "not str": async () => await wait(() => !isStr(s)) })),
               fc.constant((s: string) => ({
-                "no len": async () => await wait(() => !isInt(s.length)),
+                "not str": async () => await wait(() => typeof s !== "string"),
+              })),
+              fc.constant((s: string) => ({
+                "no len": async () => await wait(() => !Number.isInteger(s.length)),
               })),
               // Combine with various non-async validators:
               ...validators.string.map((v) => fc.constant(v))
@@ -399,11 +441,11 @@ describe("validate-parse-type", () => {
           async (s, a) => {
             const validators = Object.assign({}, ...a.map((v) => v(s)));
 
-            const sParse = (value: string) => value.toUpperCase();
-            expect(await validate(s, { parse: sParse, ...validators })).toBe(s.toUpperCase());
+            const syncParse = (value: string) => value.toUpperCase();
+            expect(await validate(s, { parse: syncParse, ...validators })).toBe(s.toUpperCase());
 
-            const aParse = async (value: string) => await wait(() => value.toUpperCase());
-            expect(await validate(s, { parse: aParse, ...validators })).toBe(s.toUpperCase());
+            const asyncParse = async (value: string) => await wait(() => value.toUpperCase());
+            expect(await validate(s, { parse: asyncParse, ...validators })).toBe(s.toUpperCase());
           }
         )
       );
@@ -411,20 +453,32 @@ describe("validate-parse-type", () => {
         fc.asyncProperty(fc.integer(), async (n) => {
           const expectParse = (value: number) => expect(value).toBe(n * n);
 
-          const sParse = (value: number) => value * value;
+          const syncParse = (value: number) => value * value;
           expectParse(
-            await validate(n, { parse: sParse, "not num": async () => await wait(() => !isNum(n)) })
+            await validate(n, {
+              parse: syncParse,
+              "not num": async () => await wait(() => typeof n !== "number"),
+            })
           );
           expectParse(
-            await validate(n, { parse: sParse, "not int": async () => await wait(() => !isInt(n)) })
+            await validate(n, {
+              parse: syncParse,
+              "not int": async () => await wait(() => !Number.isInteger(n)),
+            })
           );
 
-          const aParse = async (value: number) => await wait(() => value * value);
+          const asyncParse = async (value: number) => await wait(() => value * value);
           expectParse(
-            await validate(n, { parse: aParse, "not num": async () => await wait(() => !isNum(n)) })
+            await validate(n, {
+              parse: asyncParse,
+              "not num": async () => await wait(() => typeof n !== "number"),
+            })
           );
           expectParse(
-            await validate(n, { parse: aParse, "not int": async () => await wait(() => !isInt(n)) })
+            await validate(n, {
+              parse: asyncParse,
+              "not int": async () => await wait(() => !Number.isInteger(n)),
+            })
           );
         })
       );
@@ -433,8 +487,12 @@ describe("validate-parse-type", () => {
           fc.integer(),
           fc.array(
             fc.oneof(
-              fc.constant((n: number) => ({ "not num": async () => await wait(() => !isNum(n)) })),
-              fc.constant((n: number) => ({ "not int": async () => await wait(() => !isInt(n)) })),
+              fc.constant((n: number) => ({
+                "not num": async () => await wait(() => typeof n !== "number"),
+              })),
+              fc.constant((n: number) => ({
+                "not int": async () => await wait(() => !Number.isInteger(n)),
+              })),
               // Combine with various non-async validators:
               ...validators.integer.map((v) => fc.constant(v))
             )
@@ -442,11 +500,11 @@ describe("validate-parse-type", () => {
           async (n, a) => {
             const validators = Object.assign({}, ...a.map((v) => v(n)));
 
-            const sParse = (value: number) => value * value;
-            expect(await validate(n, { parse: sParse, ...validators })).toBe(n * n);
+            const syncParse = (value: number) => value * value;
+            expect(await validate(n, { parse: syncParse, ...validators })).toBe(n * n);
 
-            const aParse = async (value: number) => await wait(() => value * value);
-            expect(await validate(n, { parse: aParse, ...validators })).toBe(n * n);
+            const asyncParse = async (value: number) => await wait(() => value * value);
+            expect(await validate(n, { parse: asyncParse, ...validators })).toBe(n * n);
           }
         )
       );
@@ -480,31 +538,39 @@ describe("validate-parse-type", () => {
         fc.asyncProperty(fc.string(), async (s) => {
           const expectParse = (value: string) => expect(value).toBe(s.toUpperCase());
 
-          const sParse = (value: string) => value.toUpperCase();
+          const syncParse = (value: string) => value.toUpperCase();
           expectParse(
             await validate(
               s,
-              midParseStr(sParse, { "not str": async () => await wait(() => !isStr(s)) })
+              midParseStr(syncParse, {
+                "not str": async () => await wait(() => typeof s !== "string"),
+              })
             )
           );
           expectParse(
             await validate(
               s,
-              midParseStr(sParse, { "no len": async () => await wait(() => !isInt(s.length)) })
+              midParseStr(syncParse, {
+                "no len": async () => await wait(() => !Number.isInteger(s.length)),
+              })
             )
           );
 
-          const aParse = async (value: string) => await wait(() => value.toUpperCase());
+          const asyncParse = async (value: string) => await wait(() => value.toUpperCase());
           expectParse(
             await validate(
               s,
-              midParseStr(aParse, { "not str": async () => await wait(() => !isStr(s)) })
+              midParseStr(asyncParse, {
+                "not str": async () => await wait(() => typeof s !== "string"),
+              })
             )
           );
           expectParse(
             await validate(
               s,
-              midParseStr(aParse, { "no len": async () => await wait(() => !isInt(s.length)) })
+              midParseStr(asyncParse, {
+                "no len": async () => await wait(() => !Number.isInteger(s.length)),
+              })
             )
           );
         })
@@ -514,9 +580,11 @@ describe("validate-parse-type", () => {
           fc.string(),
           fc.array(
             fc.oneof(
-              fc.constant((s: string) => ({ "not str": async () => await wait(() => !isStr(s)) })),
               fc.constant((s: string) => ({
-                "no len": async () => await wait(() => !isInt(s.length)),
+                "not str": async () => await wait(() => typeof s !== "string"),
+              })),
+              fc.constant((s: string) => ({
+                "no len": async () => await wait(() => !Number.isInteger(s.length)),
               })),
               // Combine with various non-async validators:
               ...validators.string.map((v) => fc.constant(v))
@@ -525,11 +593,11 @@ describe("validate-parse-type", () => {
           async (s, a) => {
             const validators = Object.assign({}, ...a.map((v) => v(s)));
 
-            const sParse = (value: string) => value.toUpperCase();
-            expect(await validate(s, midParseStr(sParse, validators))).toBe(s.toUpperCase());
+            const syncParse = (value: string) => value.toUpperCase();
+            expect(await validate(s, midParseStr(syncParse, validators))).toBe(s.toUpperCase());
 
-            const aParse = async (value: string) => await wait(() => value.toUpperCase());
-            expect(await validate(s, midParseStr(aParse, validators))).toBe(s.toUpperCase());
+            const asyncParse = async (value: string) => await wait(() => value.toUpperCase());
+            expect(await validate(s, midParseStr(asyncParse, validators))).toBe(s.toUpperCase());
           }
         )
       );
@@ -537,31 +605,39 @@ describe("validate-parse-type", () => {
         fc.asyncProperty(fc.integer(), async (n) => {
           const expectParse = (value: number) => expect(value).toBe(n * n);
 
-          const sParse = (value: number) => value * value;
+          const syncParse = (value: number) => value * value;
           expectParse(
             await validate(
               n,
-              midParseNum(sParse, { "not num": async () => await wait(() => !isNum(n)) })
+              midParseNum(syncParse, {
+                "not num": async () => await wait(() => typeof n !== "number"),
+              })
             )
           );
           expectParse(
             await validate(
               n,
-              midParseNum(sParse, { "not int": async () => await wait(() => !isInt(n)) })
+              midParseNum(syncParse, {
+                "not int": async () => await wait(() => !Number.isInteger(n)),
+              })
             )
           );
 
-          const aParse = async (value: number) => await wait(() => value * value);
+          const asyncParse = async (value: number) => await wait(() => value * value);
           expectParse(
             await validate(
               n,
-              midParseNum(aParse, { "not num": async () => await wait(() => !isNum(n)) })
+              midParseNum(asyncParse, {
+                "not num": async () => await wait(() => typeof n !== "number"),
+              })
             )
           );
           expectParse(
             await validate(
               n,
-              midParseNum(aParse, { "not int": async () => await wait(() => !isInt(n)) })
+              midParseNum(asyncParse, {
+                "not int": async () => await wait(() => !Number.isInteger(n)),
+              })
             )
           );
         })
@@ -571,8 +647,12 @@ describe("validate-parse-type", () => {
           fc.integer(),
           fc.array(
             fc.oneof(
-              fc.constant((n: number) => ({ "not num": async () => await wait(() => !isNum(n)) })),
-              fc.constant((n: number) => ({ "not int": async () => await wait(() => !isInt(n)) })),
+              fc.constant((n: number) => ({
+                "not num": async () => await wait(() => typeof n !== "number"),
+              })),
+              fc.constant((n: number) => ({
+                "not int": async () => await wait(() => !Number.isInteger(n)),
+              })),
               // Combine with various non-async validators:
               ...validators.integer.map((v) => fc.constant(v))
             )
@@ -580,11 +660,11 @@ describe("validate-parse-type", () => {
           async (n, a) => {
             const validators = Object.assign({}, ...a.map((v) => v(n)));
 
-            const sParse = (value: number) => value * value;
-            expect(await validate(n, midParseNum(sParse, validators))).toBe(n * n);
+            const syncParse = (value: number) => value * value;
+            expect(await validate(n, midParseNum(syncParse, validators))).toBe(n * n);
 
-            const aParse = async (value: number) => await wait(() => value * value);
-            expect(await validate(n, midParseNum(aParse, validators))).toBe(n * n);
+            const asyncParse = async (value: number) => await wait(() => value * value);
+            expect(await validate(n, midParseNum(asyncParse, validators))).toBe(n * n);
           }
         )
       );
