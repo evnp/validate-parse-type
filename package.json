@@ -1,6 +1,6 @@
 {
   "name": "validate-parse-type",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "This library does 3 things, in ergonomic, func-centric fashion.",
   "main": "dist/validate-parse-type.min.js",
   "types": "dist/validate-parse-type.d.ts",
