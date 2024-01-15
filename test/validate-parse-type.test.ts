@@ -287,8 +287,67 @@ describe("validate-parse-type", () => {
   });
 
   describe("asynchronous", () => {
-    test("validate", () => {
-      expect("TODO").toBe("TODO");
+    test("validate", async () => {
+      async function wait<T>(then: () => T): Promise<T> {
+        await new Promise((r) => setTimeout(r, 1));
+        return then();
+      }
+      await fc.assert(
+        fc.asyncProperty(fc.string(), async (s) => {
+          expect(await validate(s, { "not str": async () => await wait(() => !isStr(s)) })).toBe(s);
+          expect(await validate(s, { "no len": async () => await wait(() => !isInt(s.length)) })).toBe(s);
+        })
+      );
+      await fc.assert(
+        fc.asyncProperty(
+          fc.string(),
+          fc.array(
+            fc.oneof(
+              fc.constant((s: string) => ({ "not str": async () => await wait(() => !isStr(s)) })),
+              fc.constant((s: string) => ({ "no len": async () => await wait(() => !isInt(s.length)) })),
+              // Combine with various non-async validators:
+              fc.constant((s: string) => ({ "not str": !isStr(s) })),
+              fc.constant((s: string) => ({ "not str": () => !isStr(s) })),
+              fc.constant((s: string) => ({ "no len": !isInt(s.length) })),
+              fc.constant((s: string) => ({ "no len": () => !isInt(s.length) })),
+              fc.constant(() => ({ "not str": validate.nonString })),
+              fc.constant(() => validate.unless(validate.nonString))
+            )
+          ),
+          async (s, a) => {
+            const validators = Object.assign({}, ...a.map((v) => v(s)));
+            expect(await validate(s, validators)).toBe(s);
+          }
+        )
+      );
+      await fc.assert(
+        fc.asyncProperty(fc.integer(), async (n) => {
+          expect(await validate(n, { "not num": async () => await wait(() => !isNum(n)) })).toBe(n);
+          expect(await validate(n, { "not int": async () => await wait(() => !isInt(n)) })).toBe(n);
+        })
+      );
+      fc.assert(
+        fc.asyncProperty(
+          fc.integer(),
+          fc.array(
+            fc.oneof(
+              fc.constant((n: number) => ({ "not num": async () => await wait(() => !isNum(n)) })),
+              fc.constant((n: number) => ({ "not int": async () => await wait(() => !isInt(n)) })),
+              // Combine with various non-async validators:
+              fc.constant((n: number) => ({ "not num": !isNum(n) })),
+              fc.constant((n: number) => ({ "not num": () => !isNum(n) })),
+              fc.constant((n: number) => ({ "not int": !isInt(n) })),
+              fc.constant((n: number) => ({ "not int": () => !isInt(n) })),
+              fc.constant(() => ({ "not num": validate.nonNumber })),
+              fc.constant(() => validate.unless(validate.nonNumber))
+            )
+          ),
+          async (n, a) => {
+            const validators = Object.assign({}, ...a.map((v) => v(n)));
+            expect(await validate(n, validators)).toBe(n);
+          }
+        )
+      );
     });
 
     test("validate -> parse", () => {
