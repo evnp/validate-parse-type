@@ -144,7 +144,70 @@ describe("validate-parse-type", () => {
     });
 
     test("parse -> validate", () => {
-      expect("TODO").toBe("TODO");
+      fc.assert(
+        fc.property(fc.string(), (s) => {
+          const parse = (value: string) => value.toUpperCase();
+          const expectParse = (value: string) => expect(value).toBe(s.toUpperCase());
+          expectParse(validate(s, { parse, "not str": !isStr(s) }));
+          expectParse(validate(s, { parse, "not str": () => !isStr(s) }));
+          expectParse(validate(s, { parse, "no len": !isInt(s.length) }));
+          expectParse(validate(s, { parse, "no len": () => !isInt(s.length) }));
+          expectParse(validate(s, { parse, "not str": validate.nonString }));
+          expectParse(validate(s, { parse, ...validate.unless(validate.nonString) }));
+        })
+      );
+      fc.assert(
+        fc.property(
+          fc.string(),
+          fc.array(
+            fc.oneof(
+              fc.constant((s: string) => ({ "not str": !isStr(s) })),
+              fc.constant((s: string) => ({ "not str": () => !isStr(s) })),
+              fc.constant((s: string) => ({ "no len": !isInt(s.length) })),
+              fc.constant((s: string) => ({ "no len": () => !isInt(s.length) })),
+              fc.constant(() => ({ "not str": validate.nonString })),
+              fc.constant(() => validate.unless(validate.nonString))
+            )
+          ),
+          (s, a) => {
+            const parse = (value: string) => value.toUpperCase();
+            const validators = Object.assign({}, ...a.map((v) => v(s)));
+            expect(validate(s, { parse, ...validators })).toBe(s.toUpperCase());
+          }
+        )
+      );
+      fc.assert(
+        fc.property(fc.integer(), (n) => {
+          const parse = (value: number) => value * value;
+          const expectParse = (value: number) => expect(value).toBe(n * n);
+          expectParse(validate(n, { parse, "not num": !isNum(n) }));
+          expectParse(validate(n, { parse, "not num": () => !isNum(n) }));
+          expectParse(validate(n, { parse, "not int": !isInt(n) }));
+          expectParse(validate(n, { parse, "not int": () => !isNum(n) }));
+          expectParse(validate(n, { parse, "not num": validate.nonNumber }));
+          expectParse(validate(n, { parse, ...validate.unless(validate.nonNumber) }));
+        })
+      );
+      fc.assert(
+        fc.property(
+          fc.integer(),
+          fc.array(
+            fc.oneof(
+              fc.constant((n: number) => ({ "not num": !isNum(n) })),
+              fc.constant((n: number) => ({ "not num": () => !isNum(n) })),
+              fc.constant((n: number) => ({ "not int": !isInt(n) })),
+              fc.constant((n: number) => ({ "not int": () => !isInt(n) })),
+              fc.constant(() => ({ "not num": validate.nonNumber })),
+              fc.constant(() => validate.unless(validate.nonNumber))
+            )
+          ),
+          (n, a) => {
+            const parse = (value: number) => value * value;
+            const validators = Object.assign({}, ...a.map((v) => v(n)));
+            expect(validate(n, { parse, ...validators })).toBe(n * n);
+          }
+        )
+      );
     });
 
     test("validate -> parse -> validate", () => {
