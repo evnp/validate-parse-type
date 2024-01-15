@@ -9,20 +9,11 @@ type ValidateConfig<T> = { parse?: ValidateParser<T> };
 type AsyncValidateFunc<T> = (parsed: T) => Promise<boolean>;
 type AsyncValidateRule<T> = ValidateRule<T> | AsyncValidateFunc<T>;
 type AsyncValidateRules<T> = { [key: string]: AsyncValidateRule<T> };
-type AsyncValidateParser<T> =
-  | ValidateParser<T>
-  | (() => Promise<unknown>)
-  | ((data: T) => Promise<unknown>);
+type AsyncValidateParser<T> = ValidateParser<T> | (() => Promise<unknown>) | ((data: T) => Promise<unknown>);
 type AsyncValidateConfig<T> = { parse?: AsyncValidateParser<T> };
 
-function validate<T>(
-  data: unknown,
-  config: ValidateConfig<T> | ValidateRules<T>
-): Readonly<T>;
-function validate<T>(
-  data: unknown,
-  config: AsyncValidateConfig<T> | AsyncValidateRules<T>
-): Promise<Readonly<T>>;
+function validate<T>(data: unknown, config: ValidateConfig<T> | ValidateRules<T>): Readonly<T>;
+function validate<T>(data: unknown, config: AsyncValidateConfig<T> | AsyncValidateRules<T>): Promise<Readonly<T>>;
 function validate<T>(
   data: unknown,
   config: AsyncValidateConfig<T> | AsyncValidateRules<T>
@@ -34,7 +25,9 @@ function validate<T>(
   let suffix = "";
 
   const rules = Object.entries(config).reverse();
-  let entry, message, rule;
+  let entry;
+  let message: string;
+  let rule;
 
   while ((entry = rules.pop())) {
     [message, rule] = entry;
@@ -47,9 +40,7 @@ function validate<T>(
           (typeof result === "object" || typeof result === "function") &&
           typeof (result as Promise<unknown>).then === "function"
         ) {
-          return result.then((result: T) =>
-            validate(result, Object.fromEntries(rules))
-          );
+          return result.then((result: T) => validate(result, Object.fromEntries(rules)));
         }
       } else {
         const param = parse ? result : data;
@@ -58,13 +49,16 @@ function validate<T>(
           ruleResult = rule(param);
           if (
             // Check if result is promise:
-            (typeof ruleResult === "object" ||
-              typeof ruleResult === "function") &&
+            (typeof ruleResult === "object" || typeof ruleResult === "function") &&
             typeof (ruleResult as Promise<boolean>).then === "function"
           ) {
-            return (ruleResult as Promise<boolean>).then((result: boolean) =>
-              validate(result, Object.fromEntries(rules))
-            );
+            return (ruleResult as Promise<boolean>).then((result: boolean) => {
+              if (result) {
+                throw new Error(message + infix + serialize(data) + suffix);
+              } else {
+                return validate(param, Object.fromEntries(rules));
+              }
+            });
           }
         } else if (Array.isArray(rule)) {
           // support arrays of rules:
@@ -73,13 +67,16 @@ function validate<T>(
             subRuleResult = subRule(param);
             if (
               // Check if result is promise:
-              (typeof subRuleResult === "object" ||
-                typeof subRuleResult === "function") &&
+              (typeof subRuleResult === "object" || typeof subRuleResult === "function") &&
               typeof (subRuleResult as Promise<boolean>).then === "function"
             ) {
-              return (subRuleResult as Promise<boolean>).then(
-                (result: boolean) => validate(result, Object.fromEntries(rules))
-              );
+              return (subRuleResult as Promise<boolean>).then((result: boolean) => {
+                if (result) {
+                  throw new Error(message + infix + serialize(data) + suffix);
+                } else {
+                  return validate(param, Object.fromEntries(rules));
+                }
+              });
             }
             if (subRuleResult) {
               ruleResult = subRuleResult;
@@ -117,17 +114,13 @@ function serialize(data: unknown) {
 
 function truncateStringReplacer(key: string, value: unknown) {
   if (typeof value === "string") {
-    return value.length > 16
-      ? value.slice(0, 8) + "…" + value.slice(-8)
-      : value;
+    return value.length > 16 ? value.slice(0, 8) + "…" + value.slice(-8) : value;
   } else {
     return value;
   }
 }
 
-validate.unless = function (
-  ...rules: ValidateAtom[] | [string, ...ValidateAtom[]]
-): Record<string, ValidateAtom> {
+validate.unless = function (...rules: ValidateAtom[] | [string, ...ValidateAtom[]]): Record<string, ValidateAtom> {
   let prefix = "";
   if (typeof rules[0] === "string") {
     prefix = `${rules[0]} `;
@@ -136,10 +129,7 @@ validate.unless = function (
     rules = rules as ValidateAtom[];
   }
   return Object.fromEntries(
-    rules.map((rule) => [
-      prefix + (prefix.length ? rule.message.toLowerCase() : rule.message),
-      rule,
-    ])
+    rules.map((rule) => [prefix + (prefix.length ? rule.message.toLowerCase() : rule.message), rule])
   );
 };
 
@@ -212,8 +202,7 @@ validate.nonSingleOrCoupleArray.message = "is not array of length one or two";
 validate.nonSingleOrCoupleOrTripleArray = function (value: unknown) {
   return !Array.isArray(value) || ![1, 2, 3].includes(value.length);
 } as ValidateAtom;
-validate.nonSingleOrCoupleOrTripleArray.message =
-  "is not array of length one, two, or three";
+validate.nonSingleOrCoupleOrTripleArray.message = "is not array of length one, two, or three";
 
 validate.nonCoupleOrTripleArray = function (value: unknown) {
   return !Array.isArray(value) || ![2, 3].includes(value.length);
@@ -255,9 +244,7 @@ validate.nonFunctionInArray = function (value: unknown) {
 } as ValidateAtom;
 validate.nonFunctionInArray.message = "contains non-function item";
 
-validate.notOneOf = function (
-  values: unknown[] | Record<string, unknown>
-): ValidateAtom {
+validate.notOneOf = function (values: unknown[] | Record<string, unknown>): ValidateAtom {
   values = Array.isArray(values) ? values : Object.values(values);
   function notOneOf(value: unknown) {
     return !Array.isArray(values) || !values.includes(value);
