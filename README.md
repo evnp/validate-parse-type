@@ -1,21 +1,33 @@
 Validate · Parse · Type
 -----------------------
-These verbs have a kinship; performing them together enhances clarity, safety, and correctness of code.
+These verbs have a kinship; performing them together bolsters clarity, safety, and correctness of code.
 
-Inspiration: [https://lexi-lambda.github.io/blog/2019/11/05/parse-don-t-validate](https://lexi-lambda.github.io/blog/2019/11/05/parse-don-t-validate "Parse, Don’t Validate by Alexis King")
-<br>
-(In spite of this excellent post's central message, I find `parse` written in code doesn't make _intent_ very clear. Instead, I'd remix from that message _Parse, AND Validate_ — and be clear both are happening when you do it!)
+Inspired by the classic thought-piece [https://lexi-lambda.github.io/blog/2019/11/05/parse-don-t-validate](https://lexi-lambda.github.io/blog/2019/11/05/parse-don-t-validate "Parse, Don’t Validate by Alexis King"). This project strikes a middle road, because "don't validate" doesn't usefully express intent in code as well as "parse _while_ you validate." Typing is a natural result of parsing and validation, when TypeScript is employed.
 
-```
-validate                = cultivate robust data logic leveraging terse-yet-readable validation
-validate         + type = craft runtime guarantees that outside data matches types you cast to
-validate + parse        = transform data, ensuring correctness before and after transformation
-validate + parse + type = alongside transformations, encode type information as it is observed
+Canonical example:
+```typescript
+type PositiveInteger<T extends number> = ${T} extends -${string} | ${string}.${string} ? never : T;
+
+// Pass the desired result type as a type argument when calling validate:
+const positiveIntegerArray = validate<PositiveInteger[]>(data, {
+  "data isn't an array": !Array.isArray(data),
+  parse: (data) => data.map(parseInt),
+  "data contains a non-integer": (parsedData) => {
+    return !parsedData.every((item) => Number.isInteger(item));
+  },
+  "data contains a negative integer": (parsedData) => {
+    return !parsedData.every((item) => item > 0);
+  },
+});
+
+// From this point onward in the codepath, the type system knows that
+// positiveIntegerArray is an array of positive integers, and will help us
+// accordingly. This compile-time assertion is guaranteed via runtime validation.
 ```
 
 `validate-parse-type` exports a single function — invoked as `validate<Type>({ parse: () => ... })` — which provides simple, ergonomic data correctness guarantees at the boundaries of your application. `validate` helps you know that the actual data you're working with matches the types you give it, without pulling in expensive schema-validation tooling to do so.
 
-Function-centricity keeps `validate` lightweight [(<2kb gzipped)](https://github.com/evnp/validate-parse-type/blob/main/dist/validate-parse-type.min.js.gz "validate-parse-type.min.js.gz") but also powerful, and eminently flexible.
+Function-centricity keeps `validate` lightweight [(<2kb gzipped)](https://github.com/evnp/validate-parse-type/blob/main/dist/validate-parse-type.min.js.gz "validate-parse-type.min.js.gz") but also eminently flexible, and equally expressive.
 
 Installation
 ------------
@@ -63,7 +75,7 @@ const validatedData = validate(data, {
 });
 ```
 
-If any validator express _is true_ or _returns true_, validation fails and an error
+If any validator expression _is true_ or _returns true_, validation fails and an error
 is raised containing the text of the corresponding validator mapping key, along
 with a serialized form of the validated data which is useful for debugging.
 
@@ -137,7 +149,7 @@ const positiveIntegerArray = validate<PositiveInteger[]>(data, {
 
 // From this point onward in the codepath, the type system knows that
 // positiveIntegerArray is an array of positive integers, and will help us
-// accordingly. This knowledge is backed by actual runtime validation.
+// accordingly. This compile-time assertion is guaranteed via runtime validation.
 ```
 
 Further Examples
